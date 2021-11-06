@@ -75,3 +75,4 @@ Thumbs.db
 # http
 *.http
 
+kanban-board-app/start.sh

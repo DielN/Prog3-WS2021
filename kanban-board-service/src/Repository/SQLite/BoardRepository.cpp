@@ -1,5 +1,6 @@
 #include "BoardRepository.hpp"
 #include "Core/Exception/NotImplementedException.hpp"
+#include <ctime>
 #include <filesystem>
 #include <string.h>
 
@@ -77,7 +78,30 @@ std::optional<Column> BoardRepository::getColumn(int id) {
 }
 
 std::optional<Column> BoardRepository::postColumn(std::string name, int position) {
-    throw NotImplementedException();
+    optional<Column> retrievedColumn;
+    int result = 0;
+    char *errorMessage = nullptr;
+
+    int id2;
+    string sqlInsertIntoColumn =
+        "insert into column (name, position)"
+        "VALUES ('" +
+        name + "', " + std::to_string(position) + ");";
+    result = sqlite3_exec(database, sqlInsertIntoColumn.c_str(), getIdCallback, &id2, &errorMessage);
+    handleSQLError(result, errorMessage);
+
+    if (SQLITE_OK == result) {
+        int id;
+        string sqlSelectColumn =
+            "select id from column "
+            "where position = " +
+            std::to_string(position) + ";";
+        result = sqlite3_exec(database, sqlSelectColumn.c_str(), getIdCallback, &id, &errorMessage);
+        handleSQLError(result, errorMessage);
+        retrievedColumn = Column(id, name, position);
+    }
+
+    return retrievedColumn;
 }
 
 std::optional<Prog3::Core::Model::Column> BoardRepository::putColumn(int id, std::string name, int position) {
@@ -97,7 +121,38 @@ std::optional<Item> BoardRepository::getItem(int columnId, int itemId) {
 }
 
 std::optional<Item> BoardRepository::postItem(int columnId, std::string title, int position) {
-    throw NotImplementedException();
+    optional<Item> retrievedItem;
+    time_t t = std::time(nullptr);
+    string timestamp = BoardRepository::getTimestamp(t);
+    int result = 0;
+    char *errorMessage = nullptr;
+
+    // getColumn(columnId) -> prüfen ob column mit gegebener ID exisitiert
+
+    string sqlInsertItem =
+        "INSERT INTO item (title, position, column_id, date)"
+        "VALUES ('" +
+        title + "', " +
+        std::to_string(position) + ", " +
+        std::to_string(columnId) + ", '" +
+        timestamp +
+        "');";
+    result = sqlite3_exec(database, sqlInsertItem.c_str(), NULL, 0, &errorMessage);
+    handleSQLError(result, errorMessage);
+
+    if (SQLITE_OK == result) {
+        int id;
+        string sqlSelectItem =
+            "SELECT id FROM item "
+            "WHERE position = " +
+            std::to_string(position) + ";";
+        result = sqlite3_exec(database, sqlSelectItem.c_str(), getIdCallback, &id, &errorMessage);
+        handleSQLError(result, errorMessage);
+
+        retrievedItem = Item(id, title, position, timestamp);
+    }
+
+    return retrievedItem;
 }
 
 std::optional<Prog3::Core::Model::Item> BoardRepository::putItem(int columnId, int itemId, std::string title, int position) {
@@ -144,11 +199,33 @@ void BoardRepository::createDummyData() {
     handleSQLError(result, errorMessage);
 }
 
+std::string BoardRepository::getTimestamp(time_t time) {
+    // https://en.cppreference.com/w/cpp/chrono/c/strftime
+    char offset[6];
+    char date[100];
+
+    std::strftime(offset, sizeof(offset), "%z", std::localtime(&time));
+    std::string offsetString(offset);
+    if (offsetString.empty()) {
+        offsetString = "Z";
+    } else {
+        offsetString.insert(3, ":");
+    }
+
+    std::strftime(date, sizeof(date), "%FT%T", std::localtime(&time));
+    std::string dateString(date);
+    dateString += offsetString;
+
+    return dateString;
+}
+
 /*
   I know source code comments are bad, but this one is to guide you through the use of sqlite3_exec() in case you want to use it.
   sqlite3_exec takes a "Callback function" as one of its arguments, and since there are many crazy approaches in the wild internet,
   I want to show you how the signature of this "callback function" may look like in order to work with sqlite3_exec()
 */
-int BoardRepository::queryCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames) {
+int BoardRepository::getIdCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames) {
+    int *i = static_cast<int *>(data);
+    *i = std::stoi(fieldValues[0]);
     return 0;
 }
