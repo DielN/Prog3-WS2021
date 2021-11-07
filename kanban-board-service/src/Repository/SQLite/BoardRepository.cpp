@@ -105,7 +105,24 @@ std::optional<Column> BoardRepository::postColumn(std::string name, int position
 }
 
 std::optional<Prog3::Core::Model::Column> BoardRepository::putColumn(int id, std::string name, int position) {
-    throw NotImplementedException();
+    optional<Column> updatedColumn;
+    int result = 0;
+    char *errorMessage = nullptr;
+
+    string sqlPutColumn =
+        "UPDATE column\n"
+        "SET name = '" +
+        name + "', position = " + std::to_string(position) + "\n"
+                                                             "WHERE id = " +
+        std::to_string(id) + ";";
+    result = sqlite3_exec(database, sqlPutColumn.c_str(), NULL, 0, &errorMessage);
+    handleSQLError(result, errorMessage);
+
+    if (SQLITE_OK == result) {
+        updatedColumn = Column(id, name, position);
+    }
+
+    return updatedColumn;
 }
 
 void BoardRepository::deleteColumn(int id) {
