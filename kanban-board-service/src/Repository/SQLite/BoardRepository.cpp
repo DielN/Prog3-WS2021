@@ -109,7 +109,16 @@ std::optional<Prog3::Core::Model::Column> BoardRepository::putColumn(int id, std
 }
 
 void BoardRepository::deleteColumn(int id) {
-    throw NotImplementedException();
+    int result = 0;
+    char *errorMessage = nullptr;
+
+    string sqlDeleteColumn =
+        "DELETE FROM column "
+        "WHERE id = " +
+        std::to_string(id) + ";";
+
+    result = sqlite3_exec(database, sqlDeleteColumn.c_str(), NULL, 0, &errorMessage);
+    handleSQLError(result, errorMessage);
 }
 
 std::vector<Item> BoardRepository::getItems(int columnId) {
@@ -160,7 +169,15 @@ std::optional<Prog3::Core::Model::Item> BoardRepository::putItem(int columnId, i
 }
 
 void BoardRepository::deleteItem(int columnId, int itemId) {
-    throw NotImplementedException();
+    int result = 0;
+    char *errorMessage = nullptr;
+
+    string sqlDeleteItem =
+        "DELETE FROM item "
+        "WHERE id = " +
+        std::to_string(itemId) + ";";
+    result = sqlite3_exec(database, sqlDeleteItem.c_str(), NULL, 0, &errorMessage);
+    handleSQLError(result, errorMessage);
 }
 
 void BoardRepository::handleSQLError(int statementResult, char *errorMessage) {
