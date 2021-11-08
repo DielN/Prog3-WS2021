@@ -82,19 +82,17 @@ std::optional<Column> BoardRepository::postColumn(std::string name, int position
     int result = 0;
     char *errorMessage = nullptr;
 
-    int id2;
     string sqlInsertIntoColumn =
-        "insert into column (name, position)"
-        "VALUES ('" +
-        name + "', " + std::to_string(position) + ");";
-    result = sqlite3_exec(database, sqlInsertIntoColumn.c_str(), getIdCallback, &id2, &errorMessage);
+        "INSERT into column (name, position)"
+        "VALUES ('" + name + "', " + std::to_string(position) + ");";
+    result = sqlite3_exec(database, sqlInsertIntoColumn.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 
     if (SQLITE_OK == result) {
         int id;
         string sqlSelectColumn =
-            "select id from column "
-            "where position = " +
+            "SELECT id FROM column "
+            "WHERE position = " +
             std::to_string(position) + ";";
         result = sqlite3_exec(database, sqlSelectColumn.c_str(), getIdCallback, &id, &errorMessage);
         handleSQLError(result, errorMessage);
@@ -110,16 +108,14 @@ std::optional<Prog3::Core::Model::Column> BoardRepository::putColumn(int id, std
     char *errorMessage = nullptr;
 
     string sqlPutColumn =
-        "UPDATE column\n"
-        "SET name = '" +
-        name + "', position = " + std::to_string(position) + "\n"
-                                                             "WHERE id = " +
-        std::to_string(id) + ";";
+        "UPDATE column "
+        "SET name = '" + name + "', position = " + std::to_string(position) + " "
+        "WHERE id = " + std::to_string(id) + ";";
     result = sqlite3_exec(database, sqlPutColumn.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 
     if (SQLITE_OK == result) {
-        updatedColumn = Column(id, name, position);
+        updatedColumn = Column(id, name, position); // getColumn(id) for items;
     }
 
     return updatedColumn;
@@ -131,9 +127,7 @@ void BoardRepository::deleteColumn(int id) {
 
     string sqlDeleteColumn =
         "DELETE FROM column "
-        "WHERE id = " +
-        std::to_string(id) + ";";
-
+        "WHERE id = " + std::to_string(id) + ";";
     result = sqlite3_exec(database, sqlDeleteColumn.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 }
@@ -148,8 +142,7 @@ std::optional<Item> BoardRepository::getItem(int columnId, int itemId) {
 
 std::optional<Item> BoardRepository::postItem(int columnId, std::string title, int position) {
     optional<Item> retrievedItem;
-    time_t t = std::time(nullptr);
-    string timestamp = BoardRepository::getTimestamp(t);
+    string timestamp = BoardRepository::getTimestamp();
     int result = 0;
     char *errorMessage = nullptr;
 
@@ -182,7 +175,26 @@ std::optional<Item> BoardRepository::postItem(int columnId, std::string title, i
 }
 
 std::optional<Prog3::Core::Model::Item> BoardRepository::putItem(int columnId, int itemId, std::string title, int position) {
-    throw NotImplementedException();
+    optional<Item> updatedItem;
+    string timestamp = getTimestamp();
+    int result = 0;
+    char *errorMessage = nullptr;
+
+    string sqlPutItem =
+        "UPDATE item "
+        "SET "
+        "title = '" + title + "', "
+        "position = " + std::to_string(position) + ", "
+        "date = '" + timestamp + "' "
+        "WHERE id = " + std::to_string(itemId) + ";";
+    result = sqlite3_exec(database, sqlPutItem.c_str(), NULL, 0, &errorMessage);
+    handleSQLError(result, errorMessage);
+
+    if (SQLITE_OK == result) {
+        updatedItem = Item(itemId, title, position, timestamp);
+    }
+
+    return updatedItem;
 }
 
 void BoardRepository::deleteItem(int columnId, int itemId) {
@@ -191,8 +203,7 @@ void BoardRepository::deleteItem(int columnId, int itemId) {
 
     string sqlDeleteItem =
         "DELETE FROM item "
-        "WHERE id = " +
-        std::to_string(itemId) + ";";
+        "WHERE id = " + std::to_string(itemId) + ";";
     result = sqlite3_exec(database, sqlDeleteItem.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 }
@@ -233,12 +244,13 @@ void BoardRepository::createDummyData() {
     handleSQLError(result, errorMessage);
 }
 
-std::string BoardRepository::getTimestamp(time_t time) {
+std::string BoardRepository::getTimestamp() {
     // https://en.cppreference.com/w/cpp/chrono/c/strftime
     char offset[6];
     char date[100];
+    time_t t = std::time(nullptr);
 
-    std::strftime(offset, sizeof(offset), "%z", std::localtime(&time));
+    std::strftime(offset, sizeof(offset), "%z", std::localtime(&t));
     std::string offsetString(offset);
     if (offsetString.empty()) {
         offsetString = "Z";
@@ -246,7 +258,7 @@ std::string BoardRepository::getTimestamp(time_t time) {
         offsetString.insert(3, ":");
     }
 
-    std::strftime(date, sizeof(date), "%FT%T", std::localtime(&time));
+    std::strftime(date, sizeof(date), "%FT%T", std::localtime(&t));
     std::string dateString(date);
     dateString += offsetString;
 
