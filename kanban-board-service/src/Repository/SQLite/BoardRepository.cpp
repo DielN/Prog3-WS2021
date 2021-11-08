@@ -164,8 +164,10 @@ std::optional<Item> BoardRepository::postItem(int columnId, std::string title, i
         int id;
         string sqlSelectItem =
             "SELECT id FROM item "
-            "WHERE position = " +
-            std::to_string(position) + ";";
+            "WHERE "
+            "position = " + std::to_string(position) + " AND "
+            "column_id = " + std::to_string(columnId) +
+            ";";
         result = sqlite3_exec(database, sqlSelectItem.c_str(), getIdCallback, &id, &errorMessage);
         handleSQLError(result, errorMessage);
 
