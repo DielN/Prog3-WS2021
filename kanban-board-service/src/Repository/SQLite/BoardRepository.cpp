@@ -114,7 +114,8 @@ std::optional<Prog3::Core::Model::Column> BoardRepository::putColumn(int id, std
     result = sqlite3_exec(database, sqlPutColumn.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 
-    if (SQLITE_OK == result) {
+    int modifiedRows = sqlite3_changes(database);
+    if (SQLITE_OK == result && modifiedRows > 0) {
         updatedColumn = Column(id, name, position); // getColumn(id) for items;
     }
 
@@ -190,7 +191,8 @@ std::optional<Prog3::Core::Model::Item> BoardRepository::putItem(int columnId, i
     result = sqlite3_exec(database, sqlPutItem.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 
-    if (SQLITE_OK == result) {
+    int modifiedRows = sqlite3_changes(database);
+    if (SQLITE_OK == result && modifiedRows > 0) {
         updatedItem = Item(itemId, title, position, timestamp);
     }
 
