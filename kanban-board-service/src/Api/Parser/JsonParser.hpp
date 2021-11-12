@@ -11,8 +11,13 @@ class JsonParser : public ParserIf {
   private:
     static inline std::string const EMPTY_JSON = "{}";
 
+    std::string valueToString(rapidjson::Value &value);
+
     bool isValidColumn(rapidjson::Document const &document);
     bool isValidItem(rapidjson::Document const &document);
+
+    rapidjson::Value convertItemsToValue(std::vector<Prog3::Core::Model::Item> &items, rapidjson::Document::AllocatorType &allocator);
+    rapidjson::Value convertSingleItemToValue(Prog3::Core::Model::Item &item, rapidjson::Document::AllocatorType &allocator);
 
   public:
     JsonParser(){};
