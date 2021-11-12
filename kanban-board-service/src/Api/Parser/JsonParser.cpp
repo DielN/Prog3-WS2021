@@ -77,6 +77,10 @@ std::optional<Column> JsonParser::convertColumnToModel(int columnId, std::string
     Document doc;
     doc.Parse(request.c_str());
 
+    if (!isValidColumn(doc)) {
+        return convertedColumn;
+    }
+
     string name = doc["name"].GetString();
     auto position = doc["position"].GetInt64();
 
@@ -90,10 +94,48 @@ std::optional<Item> JsonParser::convertItemToModel(int itemId, std::string &requ
     Document doc;
     doc.Parse(request.c_str());
 
+    if (!isValidItem(doc)) {
+        return convertedItem;
+    }
+
     string itemTitle = doc["title"].GetString();
     auto itemPosition = doc["position"].GetInt64();
 
     convertedItem = Item(itemId, itemTitle, itemPosition, "");
 
     return convertedItem;
+}
+
+bool JsonParser::isValidColumn(rapidjson::Document const &document) {
+
+    bool isValid = true;
+
+    if (document.HasParseError()) {
+        isValid = false;
+    }
+    if (false == document["name"].IsString()) {
+        isValid = false;
+    }
+    if (false == document["position"].IsInt()) {
+        isValid = false;
+    }
+
+    return isValid;
+}
+
+bool JsonParser::isValidItem(rapidjson::Document const &document) {
+
+    bool isValid = true;
+
+    if (document.HasParseError()) {
+        isValid = false;
+    }
+    if (false == document["title"].IsString()) {
+        isValid = false;
+    }
+    if (false == document["position"].IsInt()) {
+        isValid = false;
+    }
+
+    return isValid;
 }

@@ -36,3 +36,9 @@ void Column::setPos(int givenPos) {
 void Column::addItem(Item &givenItem) {
     items.push_back(givenItem);
 }
+
+void Column::addItems(std::vector<Item> &givenItems) {
+    for (Item item : givenItems) {
+        addItem(item);
+    }
+}

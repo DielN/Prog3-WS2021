@@ -24,6 +24,7 @@ class Column {
     void setName(std::string givenName);
     void setPos(int givenPos);
     void addItem(Item &givenItem);
+    void addItems(std::vector<Item> &givenItems);
 
   private:
     int id;

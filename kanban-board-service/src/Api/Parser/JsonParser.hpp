@@ -11,6 +11,9 @@ class JsonParser : public ParserIf {
   private:
     static inline std::string const EMPTY_JSON = "{}";
 
+    bool isValidColumn(rapidjson::Document const &document);
+    bool isValidItem(rapidjson::Document const &document);
+
   public:
     JsonParser(){};
     virtual ~JsonParser(){};

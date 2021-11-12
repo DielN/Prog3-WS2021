@@ -61,6 +61,8 @@ void BoardRepository::initialize() {
     result = sqlite3_exec(database, sqlCreateTableItem.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 
+    sqlite3_exec(database, "PRAGMA foreign_keys = ON;", 0, 0, 0);
+
     // only if dummy data is needed ;)
     //createDummyData();
 }
@@ -74,7 +76,37 @@ std::vector<Column> BoardRepository::getColumns() {
 }
 
 std::optional<Column> BoardRepository::getColumn(int id) {
-    throw NotImplementedException();
+    int result = 0;
+    sqlite3_stmt *stmt;
+
+    string sqlGetColumn =
+        "SELECT * FROM column "
+        "WHERE id = ?";
+
+    // https://stackoverflow.com/a/31168999 & https://www.sqlite.org/c3ref/stmt.html
+    result = sqlite3_prepare_v2(database, sqlGetColumn.c_str(), -1, &stmt, NULL);
+    if (SQLITE_OK != result) {
+        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
+        return nullopt;
+    }
+    sqlite3_bind_int(stmt, 1, id);
+
+    // "If the SQL statement being executed returns any data, then SQLITE_ROW is returned each time a new row of data is ready"
+    if ((result = sqlite3_step(stmt)) != SQLITE_ROW) {
+        return nullopt;
+    }
+
+    // https://www.sqlite.org/c3ref/column_blob.html
+    string columnName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
+    int position = sqlite3_column_int(stmt, 2);
+
+    Column retrievedColumn(id, columnName, position);
+    vector<Item> itemsOfColumn = getItems(id);
+    retrievedColumn.addItems(itemsOfColumn);
+
+    sqlite3_finalize(stmt);
+
+    return retrievedColumn;
 }
 
 std::optional<Column> BoardRepository::postColumn(std::string name, int position) {
@@ -83,17 +115,16 @@ std::optional<Column> BoardRepository::postColumn(std::string name, int position
     char *errorMessage = nullptr;
 
     string sqlInsertIntoColumn =
-        "INSERT into column (name, position)"
+        "INSERT into column (name, position) "
         "VALUES ('" + name + "', " + std::to_string(position) + ");";
     result = sqlite3_exec(database, sqlInsertIntoColumn.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 
     if (SQLITE_OK == result) {
-        int id;
+        int id = -1;
         string sqlSelectColumn =
             "SELECT id FROM column "
-            "WHERE position = " +
-            std::to_string(position) + ";";
+            "WHERE position = " + std::to_string(position) + ";";
         result = sqlite3_exec(database, sqlSelectColumn.c_str(), getIdCallback, &id, &errorMessage);
         handleSQLError(result, errorMessage);
         retrievedColumn = Column(id, name, position);
@@ -116,7 +147,10 @@ std::optional<Prog3::Core::Model::Column> BoardRepository::putColumn(int id, std
 
     int modifiedRows = sqlite3_changes(database);
     if (SQLITE_OK == result && modifiedRows > 0) {
-        updatedColumn = Column(id, name, position); // getColumn(id) for items;
+        Column column(id, name, position);
+        vector<Item> items = getItems(id);
+        column.addItems(items);
+        updatedColumn = column;
     }
 
     return updatedColumn;
@@ -134,7 +168,38 @@ void BoardRepository::deleteColumn(int id) {
 }
 
 std::vector<Item> BoardRepository::getItems(int columnId) {
-    throw NotImplementedException();
+    vector<Item> items;
+    int result = 0;
+    sqlite3_stmt *stmt;
+
+    string sqlGetItems =
+        "SELECT * FROM item "
+        "WHERE column_id = ?";
+    result = sqlite3_prepare_v2(database, sqlGetItems.c_str(), -1, &stmt, NULL);
+    if (SQLITE_OK != result) {
+        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
+        return items;
+    }
+    sqlite3_bind_int(stmt, 1, columnId);
+
+    while ((result = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int itemId = sqlite3_column_int(stmt, 0);
+        string itemTitle = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
+        string itemDate = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2));
+        int itemPosition = sqlite3_column_int(stmt, 3);
+
+        Item retrievedItem(itemId, itemTitle, itemPosition, itemDate);
+        items.push_back(retrievedItem);
+    }
+
+    if (SQLITE_DONE != result) {
+        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
+        sqlite3_reset(stmt);
+    }
+
+    sqlite3_finalize(stmt);
+
+    return items;
 }
 
 std::optional<Item> BoardRepository::getItem(int columnId, int itemId) {
@@ -146,8 +211,6 @@ std::optional<Item> BoardRepository::postItem(int columnId, std::string title, i
     string timestamp = BoardRepository::getTimestamp();
     int result = 0;
     char *errorMessage = nullptr;
-
-    // getColumn(columnId) -> prüfen ob column mit gegebener ID exisitiert
 
     string sqlInsertItem =
         "INSERT INTO item (title, position, column_id, date)"
@@ -189,7 +252,8 @@ std::optional<Prog3::Core::Model::Item> BoardRepository::putItem(int columnId, i
         "title = '" + title + "', "
         "position = " + std::to_string(position) + ", "
         "date = '" + timestamp + "' "
-        "WHERE id = " + std::to_string(itemId) + ";";
+        "WHERE id = " + std::to_string(itemId) + " "
+        "AND column_id = " + std::to_string(columnId) + ";";
     result = sqlite3_exec(database, sqlPutItem.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 
@@ -207,7 +271,7 @@ void BoardRepository::deleteItem(int columnId, int itemId) {
 
     string sqlDeleteItem =
         "DELETE FROM item "
-        "WHERE id = " + std::to_string(itemId) + ";";
+        "WHERE id = " + std::to_string(itemId) + " AND column_id = " + std::to_string(columnId) + ";";
     result = sqlite3_exec(database, sqlDeleteItem.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 }
