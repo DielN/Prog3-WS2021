@@ -54,14 +54,15 @@ void BoardRepository::initialize() {
         "position integer not null,"
         "column_id integer not null,"
         "unique (position, column_id),"
-        "foreign key (column_id) references column (id));";
+        "foreign key (column_id) references column (id) ON DELETE CASCADE);";
 
     result = sqlite3_exec(database, sqlCreateTableColumn.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
     result = sqlite3_exec(database, sqlCreateTableItem.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 
-    sqlite3_exec(database, "PRAGMA foreign_keys = ON;", 0, 0, 0);
+    result = sqlite3_exec(database, "PRAGMA foreign_keys = ON;", 0, 0, 0);
+    handleSQLError(result, errorMessage);
 
     // only if dummy data is needed ;)
     //createDummyData();
