@@ -22,6 +22,7 @@ namespace Prog3 {
                 std::string getTimestamp();
 
                 static int getIdCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames);
+                static int getDataCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames);
 
             public:
                 BoardRepository();

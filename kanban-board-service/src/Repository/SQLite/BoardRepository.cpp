@@ -204,7 +204,23 @@ std::vector<Item> BoardRepository::getItems(int columnId) {
 }
 
 std::optional<Item> BoardRepository::getItem(int columnId, int itemId) {
-    throw NotImplementedException();
+    Column itemColumn(INVALID_ID, "", -1);
+    int result = 0;
+    char *errorMessage = nullptr;
+
+    string sqlGetItem =
+        "SELECT id, title, date, position "
+        "FROM item "
+        "WHERE column_id = " + std::to_string(columnId) + " AND id = " + std::to_string(itemId) + ";";
+
+    result = sqlite3_exec(database, sqlGetItem.c_str(), getDataCallback, &itemColumn, &errorMessage);
+    handleSQLError(result, errorMessage);
+
+    if (itemColumn.getItems().empty()) {
+        return nullopt;
+    } else {
+        return itemColumn.getItems().back();
+    }
 }
 
 std::optional<Item> BoardRepository::postItem(int columnId, std::string title, int position) {
@@ -342,5 +358,44 @@ std::string BoardRepository::getTimestamp() {
 int BoardRepository::getIdCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames) {
     int *i = static_cast<int *>(data);
     *i = std::stoi(fieldValues[0]);
+    return 0;
+}
+
+int BoardRepository::getDataCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames) {
+    Column *column = static_cast<Column *>(data);
+    if (INVALID_ID == column->getId()) {
+        const int EXPECTED_COUNT_OF_ITEMS = 4;
+        int retrievedValues = 0;
+        int itemId = -1;
+        string itemTitle;
+        string itemDate;
+        int itemPosition;
+
+        for (int i = 0; i < numberOfColumns; i++) {
+            string currentColumn(columnNames[i]);
+            string valueOfColumn(fieldValues[i]);
+            if (currentColumn == "id") {
+                itemId = std::stoi(valueOfColumn);
+                retrievedValues++;
+            } else if (currentColumn == "title") {
+                itemTitle = valueOfColumn;
+                retrievedValues++;
+            } else if (currentColumn == "date") {
+                itemDate = valueOfColumn;
+                retrievedValues++;
+            } else if (currentColumn == "position") {
+                itemPosition = std::stoi(valueOfColumn);
+                retrievedValues++;
+            }
+        }
+
+        if (retrievedValues == 4) {
+            Item retrievedItem(itemId, itemTitle, itemPosition, itemDate);
+            column->addItem(retrievedItem);
+        } else if (retrievedValues > 0) {
+            cerr << "Only retrieved " << retrievedValues << " values, but expected " << EXPECTED_COUNT_OF_ITEMS << endl;
+        }
+    }
+
     return 0;
 }
