@@ -216,7 +216,7 @@ std::optional<Item> BoardRepository::getItem(int columnId, int itemId) {
     result = sqlite3_exec(database, sqlGetItem.c_str(), getDataCallback, &itemColumn, &errorMessage);
     handleSQLError(result, errorMessage);
 
-    if (itemColumn.getItems().empty()) {
+    if (SQLITE_OK != result || itemColumn.getItems().empty()) {
         return nullopt;
     } else {
         return itemColumn.getItems().back();

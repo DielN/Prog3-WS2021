@@ -38,7 +38,7 @@ void Column::addItem(Item &givenItem) {
 }
 
 void Column::addItems(std::vector<Item> &givenItems) {
-    for (Item item : givenItems) {
+    for (Item &item : givenItems) {
         addItem(item);
     }
 }

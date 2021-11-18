@@ -16,6 +16,9 @@ class JsonParser : public ParserIf {
     bool isValidColumn(rapidjson::Document const &document);
     bool isValidItem(rapidjson::Document const &document);
 
+    rapidjson::Value convertSingleColumnToValue(Prog3::Core::Model::Column &column, rapidjson::Document::AllocatorType &allocator);
+    rapidjson::Value convertColumnsToValue(std::vector<Prog3::Core::Model::Column> &columns, rapidjson::Document::AllocatorType &allocator);
+
     rapidjson::Value convertItemsToValue(std::vector<Prog3::Core::Model::Item> &items, rapidjson::Document::AllocatorType &allocator);
     rapidjson::Value convertSingleItemToValue(Prog3::Core::Model::Item &item, rapidjson::Document::AllocatorType &allocator);
 
