@@ -13,7 +13,16 @@ using namespace rapidjson;
 using namespace std;
 
 string JsonParser::convertToApiString(Board &board) {
-    throw NotImplementedException();
+    Document doc;
+    doc.SetObject();
+    Document::AllocatorType &allocator = doc.GetAllocator();
+
+    Value columnsAsValue = convertColumnsToValue(board.getColumns(), allocator);
+
+    doc.AddMember("title", Value(board.getTitle().c_str(), allocator), allocator);
+    doc.AddMember("columns", columnsAsValue, allocator);
+
+    return valueToString(doc);
 }
 
 string JsonParser::convertToApiString(Column &column) {
