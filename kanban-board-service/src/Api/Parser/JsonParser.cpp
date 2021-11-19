@@ -37,7 +37,7 @@ string JsonParser::convertToApiString(std::vector<Column> &columns) {
     return valueToString(columnsAsValue);
 }
 
-Value JsonParser::convertSingleColumnToValue(const Column &column, rapidjson::Document::AllocatorType &allocator) {
+rapidjson::Value JsonParser::convertSingleColumnToValue(const Column &column, rapidjson::Document::AllocatorType &allocator) {
     Value columnValue(kObjectType);
 
     Value name(column.getName().c_str(), allocator);
@@ -52,7 +52,7 @@ Value JsonParser::convertSingleColumnToValue(const Column &column, rapidjson::Do
     return columnValue;
 }
 
-Value JsonParser::convertColumnsToValue(std::vector<Column> &columns, rapidjson::Document::AllocatorType &allocator) {
+rapidjson::Value JsonParser::convertColumnsToValue(std::vector<Column> &columns, rapidjson::Document::AllocatorType &allocator) {
     Value columnsValue(kArrayType);
 
     for (const Column &column : columns) {
@@ -75,7 +75,7 @@ string JsonParser::convertToApiString(Item &item) {
 
 string JsonParser::convertToApiString(std::vector<Item> &items) {
     Document doc;
-    doc.SetArray();
+    doc.SetObject();
     Document::AllocatorType &allocator = doc.GetAllocator();
 
     Value itemsValue = convertItemsToValue(items, allocator);
@@ -83,7 +83,7 @@ string JsonParser::convertToApiString(std::vector<Item> &items) {
     return valueToString(itemsValue);
 }
 
-Value JsonParser::convertSingleItemToValue(const Item &item, rapidjson::Document::AllocatorType &allocator) {
+rapidjson::Value JsonParser::convertSingleItemToValue(const Item &item, rapidjson::Document::AllocatorType &allocator) {
     Value itemValue(kObjectType);
 
     itemValue.AddMember("id", item.getId(), allocator);
@@ -94,7 +94,7 @@ Value JsonParser::convertSingleItemToValue(const Item &item, rapidjson::Document
     return itemValue;
 }
 
-Value JsonParser::convertItemsToValue(vector<Item> &items, rapidjson::Document::AllocatorType &allocator) {
+rapidjson::Value JsonParser::convertItemsToValue(vector<Item> &items, rapidjson::Document::AllocatorType &allocator) {
     Value itemsValue(kArrayType);
 
     for (const Item &item : items) {
