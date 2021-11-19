@@ -42,3 +42,7 @@ void Column::addItems(std::vector<Item> &givenItems) {
         addItem(item);
     }
 }
+
+bool Column::operator<(const Column &c) const {
+    return position < c.getPos();
+};

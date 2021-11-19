@@ -1,5 +1,6 @@
 #define RAPIDJSON_ASSERT(x)
 
+#include <algorithm>
 #include "JsonParser.hpp"
 #include "Core/Exception/NotImplementedException.hpp"
 #include "rapidjson/stringbuffer.h"
@@ -21,9 +22,8 @@ string JsonParser::convertToApiString(Column &column) {
     Document::AllocatorType &allocator = doc.GetAllocator();
 
     Value columnAsValue = convertSingleColumnToValue(column, allocator);
-    doc.CopyFrom(columnAsValue, allocator);
 
-    return valueToString(doc);
+    return valueToString(columnAsValue);
 }
 
 string JsonParser::convertToApiString(std::vector<Column> &columns) {
@@ -31,12 +31,13 @@ string JsonParser::convertToApiString(std::vector<Column> &columns) {
     doc.SetObject();
     Document::AllocatorType &allocator = doc.GetAllocator();
 
+    std::sort(columns.begin(), columns.end());
     Value columnsAsValue = convertColumnsToValue(columns, allocator);
 
     return valueToString(columnsAsValue);
 }
 
-Value JsonParser::convertSingleColumnToValue(Column &column, rapidjson::Document::AllocatorType &allocator) {
+Value JsonParser::convertSingleColumnToValue(const Column &column, rapidjson::Document::AllocatorType &allocator) {
     Value columnValue(kObjectType);
 
     Value name(column.getName().c_str(), allocator);
@@ -54,7 +55,7 @@ Value JsonParser::convertSingleColumnToValue(Column &column, rapidjson::Document
 Value JsonParser::convertColumnsToValue(std::vector<Column> &columns, rapidjson::Document::AllocatorType &allocator) {
     Value columnsValue(kArrayType);
 
-    for (Column &column : columns) {
+    for (const Column &column : columns) {
         Value singleColumnValue = convertSingleColumnToValue(column, allocator);
         columnsValue.PushBack(singleColumnValue, allocator);
     }
@@ -68,14 +69,13 @@ string JsonParser::convertToApiString(Item &item) {
     Document::AllocatorType &allocator = doc.GetAllocator();
 
     Value itemAsValue = convertSingleItemToValue(item, allocator);
-    doc.CopyFrom(itemAsValue, allocator);
 
-    return valueToString(doc);
+    return valueToString(itemAsValue);
 }
 
 string JsonParser::convertToApiString(std::vector<Item> &items) {
     Document doc;
-    doc.SetObject();
+    doc.SetArray();
     Document::AllocatorType &allocator = doc.GetAllocator();
 
     Value itemsValue = convertItemsToValue(items, allocator);
@@ -83,7 +83,7 @@ string JsonParser::convertToApiString(std::vector<Item> &items) {
     return valueToString(itemsValue);
 }
 
-Value JsonParser::convertSingleItemToValue(Item &item, rapidjson::Document::AllocatorType &allocator) {
+Value JsonParser::convertSingleItemToValue(const Item &item, rapidjson::Document::AllocatorType &allocator) {
     Value itemValue(kObjectType);
 
     itemValue.AddMember("id", item.getId(), allocator);
@@ -97,7 +97,7 @@ Value JsonParser::convertSingleItemToValue(Item &item, rapidjson::Document::Allo
 Value JsonParser::convertItemsToValue(vector<Item> &items, rapidjson::Document::AllocatorType &allocator) {
     Value itemsValue(kArrayType);
 
-    for (Item &item : items) {
+    for (const Item &item : items) {
         Value singleItemValue = convertSingleItemToValue(item, allocator);
         itemsValue.PushBack(singleItemValue, allocator);
     }
