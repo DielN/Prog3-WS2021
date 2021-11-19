@@ -69,11 +69,49 @@ void BoardRepository::initialize() {
 }
 
 Board BoardRepository::getBoard() {
-    throw NotImplementedException();
+    vector<Column> columns = getColumns();
+    Board board(boardTitle);
+    board.setColumns(columns);
+
+    return board;
 }
 
 std::vector<Column> BoardRepository::getColumns() {
-    throw NotImplementedException();
+    vector<Column> columns;
+    int result = 0;
+    sqlite3_stmt *stmt;
+
+    string sqlGetColumns =
+        "SELECT id, name, position FROM column;";
+    // evtl. join;
+    result = sqlite3_prepare_v2(database, sqlGetColumns.c_str(), -1, &stmt, NULL);
+    if (SQLITE_OK != result) {
+        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
+        sqlite3_finalize(stmt);
+        return columns;
+    }
+
+    while ((result = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int columnId = sqlite3_column_int(stmt, 0);
+        string columnName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
+        int columnPosition = sqlite3_column_int(stmt, 2);
+
+        Column retrievedColumn(columnId, columnName, columnPosition);
+        columns.push_back(retrievedColumn);
+    }
+    if (SQLITE_DONE != result) {
+        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
+        sqlite3_reset(stmt);
+    }
+
+    for (auto &column : columns) {
+        vector<Item> items = getItems(column.getId());
+        column.addItems(items);
+    }
+
+    sqlite3_finalize(stmt);
+
+    return columns;
 }
 
 std::optional<Column> BoardRepository::getColumn(int id) {
