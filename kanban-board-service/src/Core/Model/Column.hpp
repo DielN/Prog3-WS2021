@@ -26,8 +26,8 @@ class Column {
     void addItem(Item &givenItem);
     void addItems(std::vector<Item> &givenItems);
     
-    bool operator<(const Column &c);
-    
+    bool operator<(const Column &c) const;
+
   private:
     int id;
     std::string name;
