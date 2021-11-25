@@ -36,3 +36,7 @@ void Item::setPos(int givenPos) {
 void Item::setTimestamp(std::string givenTime) {
     timestamp = givenTime;
 }
+
+bool Item::operator<(const Item &i) const {
+    return position < i.getPos();
+};

@@ -21,6 +21,8 @@ class Item {
     void setPos(int givenPos);
     void setTimestamp(std::string givenTime);
 
+    bool operator<(const Item &i) const;
+
   private:
     int id;
     std::string title;

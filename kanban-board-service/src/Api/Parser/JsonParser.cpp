@@ -40,7 +40,6 @@ string JsonParser::convertToApiString(std::vector<Column> &columns) {
     doc.SetObject();
     Document::AllocatorType &allocator = doc.GetAllocator();
 
-    std::sort(columns.begin(), columns.end());
     Value columnsAsValue = convertColumnsToValue(columns, allocator);
 
     return valueToString(columnsAsValue);
@@ -51,6 +50,7 @@ rapidjson::Value JsonParser::convertSingleColumnToValue(const Column &column, ra
 
     Value name(column.getName().c_str(), allocator);
     vector<Item> itemVector = column.getItems();
+    std::sort(itemVector.begin(), itemVector.end());
     Value items = convertItemsToValue(itemVector, allocator);
 
     columnValue.AddMember("id", column.getId(), allocator);
@@ -63,6 +63,7 @@ rapidjson::Value JsonParser::convertSingleColumnToValue(const Column &column, ra
 
 rapidjson::Value JsonParser::convertColumnsToValue(std::vector<Column> &columns, rapidjson::Document::AllocatorType &allocator) {
     Value columnsValue(kArrayType);
+    std::sort(columns.begin(), columns.end());
 
     for (const Column &column : columns) {
         Value singleColumnValue = convertSingleColumnToValue(column, allocator);
@@ -105,6 +106,7 @@ rapidjson::Value JsonParser::convertSingleItemToValue(const Item &item, rapidjso
 
 rapidjson::Value JsonParser::convertItemsToValue(vector<Item> &items, rapidjson::Document::AllocatorType &allocator) {
     Value itemsValue(kArrayType);
+    std::sort(items.begin(), items.end());
 
     for (const Item &item : items) {
         Value singleItemValue = convertSingleItemToValue(item, allocator);
