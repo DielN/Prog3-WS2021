@@ -83,7 +83,7 @@ std::vector<Column> BoardRepository::getColumns() {
 
     string sqlGetColumns =
         "SELECT id, name, position FROM column;";
-    // evtl. join;
+
     result = sqlite3_prepare_v2(database, sqlGetColumns.c_str(), -1, &stmt, NULL);
     if (SQLITE_OK != result) {
         cout << "SQL error: " << sqlite3_errmsg(database) << endl;
@@ -93,7 +93,8 @@ std::vector<Column> BoardRepository::getColumns() {
 
     while ((result = sqlite3_step(stmt)) == SQLITE_ROW) {
         int columnId = sqlite3_column_int(stmt, 0);
-        string columnName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
+        const unsigned char *pColumnName = sqlite3_column_text(stmt, 1);
+        string columnName = (pColumnName != NULL ? reinterpret_cast<const char *>(pColumnName) : "NULL");
         int columnPosition = sqlite3_column_int(stmt, 2);
 
         Column retrievedColumn(columnId, columnName, columnPosition);
@@ -136,7 +137,8 @@ std::optional<Column> BoardRepository::getColumn(int id) {
     }
 
     // https://www.sqlite.org/c3ref/column_blob.html
-    string columnName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
+    const unsigned char *pColumnName = sqlite3_column_text(stmt, 1);
+    string columnName = (pColumnName != NULL ? reinterpret_cast<const char *>(pColumnName) : "NULL");
     int position = sqlite3_column_int(stmt, 2);
 
     Column retrievedColumn(id, columnName, position);
@@ -223,8 +225,10 @@ std::vector<Item> BoardRepository::getItems(int columnId) {
 
     while ((result = sqlite3_step(stmt)) == SQLITE_ROW) {
         int itemId = sqlite3_column_int(stmt, 0);
-        string itemTitle = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
-        string itemDate = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2));
+        const unsigned char *pItemTitle = sqlite3_column_text(stmt, 1);
+        string itemTitle = (pItemTitle != NULL ? reinterpret_cast<const char *>(pItemTitle) : "NULL");
+        const unsigned char *pItemDate = sqlite3_column_text(stmt, 2);
+        string itemDate = (pItemDate != NULL ? reinterpret_cast<const char *>(pItemDate) : "NULL");
         int itemPosition = sqlite3_column_int(stmt, 3);
 
         Item retrievedItem(itemId, itemTitle, itemPosition, itemDate);
