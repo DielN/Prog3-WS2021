@@ -297,7 +297,6 @@ std::optional<Item> BoardRepository::postItem(int columnId, std::string title, i
 
 std::optional<Prog3::Core::Model::Item> BoardRepository::putItem(int columnId, int itemId, std::string title, int position) {
     optional<Item> updatedItem;
-    string timestamp = getTimestamp();
     int result = 0;
     char *errorMessage = nullptr;
 
@@ -305,15 +304,18 @@ std::optional<Prog3::Core::Model::Item> BoardRepository::putItem(int columnId, i
         "UPDATE item "
         "SET "
         "title = '" + title + "', "
-        "position = " + std::to_string(position) + ", "
-        "date = '" + timestamp + "' "
+        "position = " + std::to_string(position) + " "
         "WHERE id = " + std::to_string(itemId) + " "
         "AND column_id = " + std::to_string(columnId) + ";";
     result = sqlite3_exec(database, sqlPutItem.c_str(), NULL, 0, &errorMessage);
     handleSQLError(result, errorMessage);
 
+    optional<Item> optModifiedItem = getItem(columnId, itemId);
+
     int modifiedRows = sqlite3_changes(database);
-    if (SQLITE_OK == result && modifiedRows > 0) {
+    if (SQLITE_OK == result && modifiedRows > 0 && optModifiedItem.has_value()) {
+        Item modifiedItem = optModifiedItem.value();
+        string timestamp = modifiedItem.getTimestamp();
         updatedItem = Item(itemId, title, position, timestamp);
     }
 
