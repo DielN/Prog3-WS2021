@@ -76,14 +76,14 @@ Board BoardRepository::getBoard() {
     return board;
 }
 
-std::vector<Column> BoardRepository::getColumns() {
-    // TODO: Error Handling
+std::vector<Column> BoardRepository::getColumns(bool sortedByPosition) {
     vector<Column> columns;
     int result = 0;
     sqlite3_stmt *stmt;
 
+    string sqlSortedByPos = (sortedByPosition ? " ORDER BY POSITION" : "");
     string sqlGetColumns =
-        "SELECT id, name, position FROM column;";
+        "SELECT id, name, position FROM column" + sqlSortedByPos + ";";
 
     result = sqlite3_prepare_v2(database, sqlGetColumns.c_str(), -1, &stmt, NULL);
     if (checkForSQLError(result, stmt)) return vector<Column> {};
@@ -200,14 +200,15 @@ void BoardRepository::deleteColumn(int id) {
     handleSQLError(result, errorMessage);
 }
 
-std::vector<Item> BoardRepository::getItems(int columnId) {
+std::vector<Item> BoardRepository::getItems(int columnId, bool sortedByPosition) {
     vector<Item> items;
     int result = 0;
     sqlite3_stmt *stmt;
 
+    string sqlSortedByPos = (sortedByPosition ? " ORDER BY POSITION" : "");
     string sqlGetItems =
         "SELECT * FROM item "
-        "WHERE column_id = ?";
+        "WHERE column_id = ? " + sqlSortedByPos + ";";
     result = sqlite3_prepare_v2(database, sqlGetItems.c_str(), -1, &stmt, NULL);
     if (checkForSQLError(result, stmt)) return vector<Item> {};
     sqlite3_bind_int(stmt, 1, columnId);
@@ -413,7 +414,7 @@ optional<Item> BoardRepository::dbRowToItem(int numberOfColumns, char **fieldVal
 
     for (int i = 0; i < numberOfColumns; i++) {
         if (fieldValues[i] == NULL) {
-            break;
+            continue;
         }
         string currentColumn(columnNames[i]);
         string valueOfColumn(fieldValues[i]);
