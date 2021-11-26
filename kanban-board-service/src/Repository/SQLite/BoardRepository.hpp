@@ -14,6 +14,7 @@ namespace Prog3 {
                 void initialize();
                 void createDummyData();
                 void handleSQLError(int statementResult, char *errorMessage);
+                bool checkForSQLError(int statementResult, sqlite3_stmt *stmt);
 
                 static bool isValid(int id) {
                     return id != INVALID_ID;
@@ -22,7 +23,8 @@ namespace Prog3 {
                 std::string getTimestamp();
 
                 static int getIdCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames);
-                static int getDataCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames);
+                static std::optional<Prog3::Core::Model::Item> dbRowToItem(int numberOfColumns, char **fieldValues, char **columnNames);
+                static int getItemsCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames);
 
             public:
                 BoardRepository();

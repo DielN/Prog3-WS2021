@@ -77,6 +77,7 @@ Board BoardRepository::getBoard() {
 }
 
 std::vector<Column> BoardRepository::getColumns() {
+    // TODO: Error Handling
     vector<Column> columns;
     int result = 0;
     sqlite3_stmt *stmt;
@@ -85,11 +86,7 @@ std::vector<Column> BoardRepository::getColumns() {
         "SELECT id, name, position FROM column;";
 
     result = sqlite3_prepare_v2(database, sqlGetColumns.c_str(), -1, &stmt, NULL);
-    if (SQLITE_OK != result) {
-        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
-        sqlite3_finalize(stmt);
-        return columns;
-    }
+    if (checkForSQLError(result, stmt)) return vector<Column> {};
 
     while ((result = sqlite3_step(stmt)) == SQLITE_ROW) {
         int columnId = sqlite3_column_int(stmt, 0);
@@ -100,10 +97,7 @@ std::vector<Column> BoardRepository::getColumns() {
         Column retrievedColumn(columnId, columnName, columnPosition);
         columns.push_back(retrievedColumn);
     }
-    if (SQLITE_DONE != result) {
-        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
-        sqlite3_reset(stmt);
-    }
+    if (checkForSQLError(result, stmt)) return vector<Column> {};
 
     for (auto &column : columns) {
         vector<Item> items = getItems(column.getId());
@@ -125,10 +119,8 @@ std::optional<Column> BoardRepository::getColumn(int id) {
 
     // https://stackoverflow.com/a/31168999 & https://www.sqlite.org/c3ref/stmt.html
     result = sqlite3_prepare_v2(database, sqlGetColumn.c_str(), -1, &stmt, NULL);
-    if (SQLITE_OK != result) {
-        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
-        return nullopt;
-    }
+    if (checkForSQLError(result, stmt)) return nullopt;
+
     sqlite3_bind_int(stmt, 1, id);
 
     // "If the SQL statement being executed returns any data, then SQLITE_ROW is returned each time a new row of data is ready"
@@ -217,10 +209,7 @@ std::vector<Item> BoardRepository::getItems(int columnId) {
         "SELECT * FROM item "
         "WHERE column_id = ?";
     result = sqlite3_prepare_v2(database, sqlGetItems.c_str(), -1, &stmt, NULL);
-    if (SQLITE_OK != result) {
-        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
-        return items;
-    }
+    if (checkForSQLError(result, stmt)) return vector<Item> {};
     sqlite3_bind_int(stmt, 1, columnId);
 
     while ((result = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -234,11 +223,7 @@ std::vector<Item> BoardRepository::getItems(int columnId) {
         Item retrievedItem(itemId, itemTitle, itemPosition, itemDate);
         items.push_back(retrievedItem);
     }
-
-    if (SQLITE_DONE != result) {
-        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
-        sqlite3_reset(stmt);
-    }
+    if (checkForSQLError(result, stmt)) return vector<Item> {};
 
     sqlite3_finalize(stmt);
 
@@ -246,7 +231,7 @@ std::vector<Item> BoardRepository::getItems(int columnId) {
 }
 
 std::optional<Item> BoardRepository::getItem(int columnId, int itemId) {
-    Column itemColumn(INVALID_ID, "", -1);
+    vector<Item> items;
     int result = 0;
     char *errorMessage = nullptr;
 
@@ -255,13 +240,13 @@ std::optional<Item> BoardRepository::getItem(int columnId, int itemId) {
         "FROM item "
         "WHERE column_id = " + std::to_string(columnId) + " AND id = " + std::to_string(itemId) + ";";
 
-    result = sqlite3_exec(database, sqlGetItem.c_str(), getDataCallback, &itemColumn, &errorMessage);
+    result = sqlite3_exec(database, sqlGetItem.c_str(), getItemsCallback, &items, &errorMessage);
     handleSQLError(result, errorMessage);
 
-    if (SQLITE_OK != result || itemColumn.getItems().empty()) {
+    if (SQLITE_OK != result || items.empty()) {
         return nullopt;
     } else {
-        return itemColumn.getItems().back();
+        return items[0];
     }
 }
 
@@ -345,6 +330,17 @@ void BoardRepository::handleSQLError(int statementResult, char *errorMessage) {
     }
 }
 
+bool BoardRepository::checkForSQLError(int statementResult, sqlite3_stmt *stmt) {
+    bool hasErrorOccured = statementResult != SQLITE_OK && statementResult != SQLITE_DONE && statementResult != SQLITE_ROW;
+    if (hasErrorOccured) {
+        hasErrorOccured = true;
+        cout << "SQL error: " << sqlite3_errmsg(database) << endl;
+        sqlite3_finalize(stmt);
+    }
+
+    return hasErrorOccured;
+}
+
 void BoardRepository::createDummyData() {
 
     cout << "creatingDummyData ..." << endl;
@@ -405,41 +401,49 @@ int BoardRepository::getIdCallback(void *data, int numberOfColumns, char **field
     return 0;
 }
 
-int BoardRepository::getDataCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames) {
-    Column *column = static_cast<Column *>(data);
-    if (INVALID_ID == column->getId()) {
-        const int EXPECTED_COUNT_OF_ITEMS = 4;
-        int retrievedValues = 0;
-        int itemId = -1;
-        string itemTitle;
-        string itemDate;
-        int itemPosition;
+optional<Item> BoardRepository::dbRowToItem(int numberOfColumns, char **fieldValues, char **columnNames) {
+    const int EXPECTED_COUNT_OF_ITEMS = 4;
+    int retrievedValues = 0;
 
-        for (int i = 0; i < numberOfColumns; i++) {
-            string currentColumn(columnNames[i]);
-            string valueOfColumn(fieldValues[i]);
-            if (currentColumn == "id") {
-                itemId = std::stoi(valueOfColumn);
-                retrievedValues++;
-            } else if (currentColumn == "title") {
-                itemTitle = valueOfColumn;
-                retrievedValues++;
-            } else if (currentColumn == "date") {
-                itemDate = valueOfColumn;
-                retrievedValues++;
-            } else if (currentColumn == "position") {
-                itemPosition = std::stoi(valueOfColumn);
-                retrievedValues++;
-            }
+    optional<Item> retrievedItem;
+    int itemId = -1;
+    string itemTitle;
+    string itemDate;
+    int itemPosition;
+
+    for (int i = 0; i < numberOfColumns; i++) {
+        if (fieldValues[i] == NULL) {
+            break;
         }
-
-        if (retrievedValues == 4) {
-            Item retrievedItem(itemId, itemTitle, itemPosition, itemDate);
-            column->addItem(retrievedItem);
-        } else if (retrievedValues > 0) {
-            cerr << "Only retrieved " << retrievedValues << " values, but expected " << EXPECTED_COUNT_OF_ITEMS << endl;
+        string currentColumn(columnNames[i]);
+        string valueOfColumn(fieldValues[i]);
+        if (currentColumn == "id") {
+            itemId = std::stoi(valueOfColumn);
+            retrievedValues++;
+        } else if (currentColumn == "title") {
+            itemTitle = valueOfColumn;
+            retrievedValues++;
+        } else if (currentColumn == "date") {
+            itemDate = valueOfColumn;
+            retrievedValues++;
+        } else if (currentColumn == "position") {
+            itemPosition = std::stoi(valueOfColumn);
+            retrievedValues++;
         }
     }
+    if (retrievedValues == 4) {
+        retrievedItem = Item(itemId, itemTitle, itemPosition, itemDate);
+    } else if (retrievedValues > 0) {
+        cerr << "Only retrieved " << retrievedValues << " values, but expected " << EXPECTED_COUNT_OF_ITEMS << endl;
+    }
+    return retrievedItem;
+}
 
+int BoardRepository::getItemsCallback(void *data, int numberOfColumns, char **fieldValues, char **columnNames) {
+    vector<Item> *items = static_cast<vector<Item> *>(data);
+    optional<Item> retrievedItem = dbRowToItem(numberOfColumns, fieldValues, columnNames);
+    if (retrievedItem.has_value()) {
+        items->push_back(retrievedItem.value());
+    }
     return 0;
 }
